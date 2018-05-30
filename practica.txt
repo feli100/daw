@@ -1,0 +1,147 @@
+1. PERMITIR CONEXION POR EL PUERTO ESTANDAR:
+-No hay que tocar nada, esta habilitado por defecto.
+2. NO PERMITIR CONEXION ESTANDAR:
+-No hay que tocar nada, las conexiones anónimas están deshabilitadas por defecto con anonymous_enabled=NO
+3. PERMITIR CONEXION ANONIMA PARA SUBIR ARCHIVOS A LA CARPETA PUBLICO.
+-sudo mkdir /srv/ftp/publico
+-sudo chown ftp:ftp publico/
+-sudo nano /etc/vsftpd.conf
+anonymous_enable=YES
+write_enable=YES
+anon_upload_enable=YES
+-sudo service vsftpd restart
+4. LOS USUARIOS ANONIMOS SOLO PUEDEN DESCARGAR FICHEROS LEGIBLES POR TODO EL MUNDO (644).
+anon_world_readable_only=YES
+5. TODOS LOS FICHEROS QUE SUBAN LOS USUARIOS ANONIMOS QUEDEN CON PERMISO DE PROPIETARIO DETERMINADO.
+chown_uploads=YES
+chown_username=Nombre de usuario
+6. ASEGURARSE DE QUE SE SOLICITA SIEMPRE CONTRASEÑA AL USUARIO ANÓNIMO.
+no_anon_password=NO
+secure_email_list_enable=YES
+-sudo nano /etc/vsftpd.email_passwords
+(metemos dentro los emails permitidos, que se usarán como contraseñas válidas)
+7. CREAR USUARIOS CON ACCESO SOLO A SUS RESPECTIVOS DIRECTORIOS CON PERMISOS DE LECTURA ESCRITURA
+-sudo useradd -d /home/usu -m usu
+-sudo passwd usu
+--------------------------------------(si pide una carpeta más específica)
+-sudo mkdir /home/usu/ftp
+-sudo usermod --home /home/usu/ftp usu
+-sudo chown usu:ftp /home/usu/ftp
+---------------------------------------
+-sudo nano /etc/vsftpd.conf
+chroot_local_user=NO
+chroot_list_enable=YES
+chroot_list_file=/etc/vsftpd.chroot_list
+allow_writeable_chroot=YES (para evitar el error 500 en filezilla)
+-sudo nano /etc/vsftpd.chroot_list
+(metemos dentro los usuarios que queremos enjaular)
+8. HACER QUE EL SERVIDOR VSFTPD DEJE TRAZA EN FICHERO DE LOG DE TODO EL DIAGNOSTICO DE COMUNICACIÓN CIFRADA
+xferlog_enable=YES
+xferlog_std_format=NO
+log_ftp_protocol=YES
+xferlog_file=/var/log/vsftpd.log
+9. PERMITIR TAMBIÉN CONEXION POR EL PUERTO SEGURO DE FORMA CIFRADA. CREAR CERTIFICADO PREVIO
+-cd /etc/
+-sudo nano openssl req -x509 -nodes -days 365 -newkey rsa:2048 -keyout vsftpd.pem -out vsftpd.pem
+-sudo nano /etc/vsftpd.conf
+ssl_enable=YES
+force_local_data_ssl=NO
+force_local_logins_ssl=NO
+ssl_tlsv1=YES
+ssl_sslv2=NO
+ssl_sslv3=NO
+rsa_cert_file=/etc/vsftpd.pem
+10. FORZAR A QUE TODAS LAS CONEXIONES ANONIMAS SE REALICEN DE FORMA CIFRADA MEDIANTE SSL.
+allow_anon_ssl=YES
+force_anon_data_ssl=YES
+force_anon_logins_ssl=YES
+11. OBLIGAR A QUE TODAS LAS CONEXIONES REQUIERAN UN CERFICIADO DIGITAL PARA TRANSMITIR POR SSL.
+require_cert=YES
+
+12.TODOS LOS CERTIFICADOS CLIENTE UTILIZADOS TENGAN QUE SE VALIDADOS OK
+validate_cert=YES
+
+CREAR UN REPOSITORIO LOCAL Y CONECTARLO A UNO REMOTO
+-sudo apt install git -y
+-sudo git config --global user.name “usuario”
+-sudo git config --global user.email usuario@gmail.com
+-sudo git config --global core.editor nano
+-sudo git config --global merge.tool vimdiff
+*(Nos situamos en dentro de la carpeta donde queremos inicializar el repositorio)
+-sudo git init
+-sudo git add *
+-sudo git status
+-sudo git commit -m ‘Versión Inicial (o el comentario que quieras’
+*(vamos a nuestra cuenta de github, creamos repositorio y copiamos la url que nos muestra al crearlo)
+-sudo git remote add nombre_repositorio url_copiada
+-sudo git push nombre_repositorio master
+EXPLICAR QUE HACE EL COMANDO DIG
+1. DIG SIN ARGUMENTOS:
+-El comando dig te permite realizar consultas sobre servidores de DNS. Si escribimos solamente “dig” realizamos una consulta de los NS (Name Servers) raíz o root servers
+2. DIG CON DOMINIO COMO ARGUMENTO (dig www.marca.com):
+-Nos devuelve el registro A
+--Como la resolución ha sido correcta, dig nos muestra status: NOERROR.
+--En ANSWER SECTION, nos muestra la sección que ha respondido a la interrogación sobre el DNS. 
+--Nos devuelve el tiempo de respuesta de la consulta: Query time: 8 msec
+--Muestra el servidor que responde a la consulta DNS: SERVER: 192.168.130.202#53
+3. DIG COMO ARGUMENTO Y USANDO UN NAME SERVER ESPECIFICO: (dig @8.8.8.8 www.marca.com)
+-Nos devuelve el registro A, pero consulta el dominio desde las DNS especificadas
+4. DIG CON DOMINIO COMO ARGUMENTO, ESPECIFICANDO EL REGISTRO QUE QUEREMOS CONSULTAR: (dig MX @8.8.8.8 www.marca.com)
+-A: Registro de dirección IPv4.
+-AAA: Registro de dirección IPv6.
+-MX: Registro de servidor de correo.
+-TXT: Registro de anotaciones de texto.
+-PTR: Registro que resuelve direcciones IPv4 hacia el nombre anfitriones.
+-NS: Registro de servidor de nombres.
+-SOA: Especifica el Servidor DNS Maestro.
+-SRV: Registro de servicios que especifica información acerca de servicios disponibles a través del dominio. 
+-CNAME: Registro de nombre canónico que hace que un nombre sea alias de otro.
+-ANY: Todos los tipos de registro de un dominio en la misma consulta
+5. CONSULTAR TODOS LOS REGISTROS DE LA LISTA: (dig ANY www.marca.com)
+En lugar de especificar el tipo de registro a mostrar, podemos decir directamente que consulte todos los que se sirven en la zona DNS del dominio con el parámetro ANY
+6. DIG CON EL PARAMETRO -X (dig -x 8.8.8.8)
+-Nos devuelve la resolución inversa de un dominio. Nos mostrará el dominio asociado a la IP introducida. Si no 
+añadimos más argumentos, la resolución inversa será del registro A.
+7. DIG CON EL PARAMETRO +TRACE (dig +trace www.marca.com)
+-Realiza un debug de las DNS, realizando un rastreo en la ruta de búsqueda DNS.
+--En primer lugar se muestran los servidores raíz ‘ . ’
+--Después se rastrean los servidores de nombres para el dominio .es y, finalmente, se devuelven los servidores de nombres del dominio, seguidos de los registros DNS de la misma.
+DESARROLLAR UNA APLICACION WEB BASADA EN SERVLETS CONTRA UN SERVIDOR OPENLDAP
+sudo apt-get update
+Sudo apt-get install slapd ldap-utils Nos solicita la contraseña que debemos recordarla ya que será la que nos pida para 
+reiniciar los servicios LDAP
+Nos preguntará: Deseas omitir la configuración - NO
+Nombre del dominio: dominiofelipe.es
+Nombre de la organización: dominiofelipe
+Contraseña administrador LDAP: introducimos la que queramos y la volverá a solicitar como seguridad
+Motor de la base de datos a utilizar: MDB
+Eliminar BD cuando quitemos slapd: SI
+Desea mover la base de datos antigua: SI
+Utilizar la versión 2 de LDAP: NO
+Ahora creamos una estructura ficticia LDAP
+- cd /etc
+- cd ldap
+sudo gedit estructura.ldif
+dn: ou=tienda, dc=dominiofelipe, dc=local ou: tienda objectclass: organizationalUnit
+sudo gedit grupo.ldif
+dn: ou=grupo, dc=dominiofelipe, dc=local ou: grupo objectclass: organizationalUnit
+sudo gedit usuarios.ldif
+dn: cn=users, ou=grupo, dc=dominiofelipe, dc=local objectclass: posixGroup objectclass: top cn: users userPassword: {cript}* gidNumber: 112
+Agregar los contenidos de los ldif con las sentencias
+ldapadd -x -W -D “cd=admin,dc= dominiofelipe,dc=local” -f estructura.ldif
+ldapadd -x -W -D “cd=admin,dc= dominiofelipe,dc=local” -f grupo.ldif
+ldapadd -x -W -D “cd=admin,dc= dominiofelipe,dc=local” -f usuarios.ldif
+Con esto cargamos la configuracion y ya lo tenemos realizado
+CONFIGURAR REPOSITORIO DE SUBVERSION MEDIANTE ECLIPSE
+1. Instalamos eclipse 2. Nos dirigimos a help e install new software 3. Debemos seleccionar trabajar con “All Available Sites” y en el buscador escribimos 
+SVN 4. elegimos las 3 opciones que se detallan y pulsamos next 5. Aceptamos la licencia y pulsamos finish
+ 6. Reiniciamos eclipse 7. Nos dirigimos a windows, perspective, open perspective, y other
+8. Seleccionamos SVN Repository Exploring y open 9. Nos dirigimos a file, new, repository location 10. En la URL escribimos file:///C/Users/felip/Desktop/SVN y user y password
+CONVERSION DE FORMATOS DE REPOSITORIO DE CSV A GIT
+1.Para instalar el servidor y el cliente cvs ejecutamos: sudo apt-get install cvs cvsd 2. sudo cvsd-buildroot /var/lib/cvsd/ 3. cd /var/lib/cvsd
+ sudo mkdir cvsrepo 4. Inicializamos el repositorio $ sudo cvs -d /var/lib/cvsd/cvsrepo init
+5.Creamos un usuario cvs y le damos una password sudo cvsd-passwd /var/lib/cvsd/myrepos Felipe
+ 6. Ahora editamos el fichero: sudo nano //var/lib/cvsd/myrepos/CVSROOT/config y Cambiamos “#SystemAuto=no” a “SystemAuto=no”
+7. Ahora instalamos git con sudo apt-get install git-core 8. Configuro el usuario y el email git config --global user.name "felipe" y git config --global user.email "felipejimenezprieto@gmail.com" 9.necesitamos instalar la herramienta cvs2svn mediante el comando: sudo apt-get install cvs2svn
+10.sudo cvs2git --blobfile=git-blob.dat --dumpfile=git-dump.dat "--username=felipe" /var/lib/cvsd/myrepos 11.Ahora creamos un directorio para el repositorio git y lo iniciamos mediante el comando git init 11. Para importar los ficheros *.dat en nuestro nuevo repositorio tenemos que utilizar el comando: cat ../git-blob.dat ../git-dump.dat | git fast-import
+
